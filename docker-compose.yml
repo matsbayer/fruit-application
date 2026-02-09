@@ -1,0 +1,124 @@
+version: "3.9"
+
+services:
+  # ---------- FRONTEND ----------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      # React/Vite spricht NUR mit dem Gateway
+      - VITE_API_BASE=http://localhost:8080
+    depends_on:
+      - gateway
+    networks:
+      - appnet
+
+  # ---------- GATEWAY ----------
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      # interne Docker-DNS Namen (Service-Name = Hostname)
+      - USERS_URL=http://users:3000
+      - FRUITS_URL=http://fruits:3000
+      - INVENTORY_URL=http://inventory:3000
+      - PORT=8080
+    depends_on:
+      - users
+      - fruits
+      - inventory
+    networks:
+      - appnet
+
+  # ---------- USERS SERVICE + POSTGRES ----------
+  users:
+    build:
+      context: ./backend/users
+      dockerfile: Dockerfile
+    environment:
+      - PORT=3000
+      - DATABASE_URL=postgres://users:users@users_db:5432/usersdb
+    depends_on:
+      - users_db
+    networks:
+      - appnet
+
+  users_db:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=users
+      - POSTGRES_PASSWORD=users
+      - POSTGRES_DB=usersdb
+    volumes:
+      - users_pg_data:/var/lib/postgresql/data
+    networks:
+      - appnet
+
+  # ---------- FRUITS SERVICE + MONGODB ----------
+  fruits:
+    build:
+      context: ./backend/fruits
+      dockerfile: Dockerfile
+    environment:
+      - PORT=3000
+      - MONGODB_URI=mongodb://fruits_db:27017/fruitsdb
+    depends_on:
+      - fruits_db
+    networks:
+      - appnet
+
+  fruits_db:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - fruits_mongo_data:/data/db
+    networks:
+      - appnet
+
+  # ---------- INVENTORY SERVICE + MARIADB ----------
+  inventory:
+    build:
+      context: ./backend/inventory
+      dockerfile: Dockerfile
+    environment:
+      - PORT=3000
+      - DB_HOST=inventory_db
+      - DB_USER=inventory
+      - DB_PASSWORD=inventory
+      - DB_NAME=inventorydb
+    # optional je lib: DB_PORT=3306
+    depends_on:
+      - inventory_db
+    networks:
+      - appnet
+
+  inventory_db:
+    image: mariadb:11
+    ports:
+      - "3306:3306"
+    environment:
+      - MARIADB_USER=inventory
+      - MARIADB_PASSWORD=inventory
+      - MARIADB_DATABASE=inventorydb
+      - MARIADB_ROOT_PASSWORD=root
+    volumes:
+      - inventory_maria_data:/var/lib/mysql
+    networks:
+      - appnet
+
+networks:
+  appnet:
+
+volumes:
+  users_pg_data:
+  fruits_mongo_data:
+  inventory_maria_data:
