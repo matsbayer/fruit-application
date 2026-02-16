@@ -4,12 +4,16 @@ dotenv.config();
 import express from "express";
 import mongoose from "mongoose";
 import { Fruit } from "./models/Fruit.js";
+import { seedFruitDB } from "./seed.js";
 
 const mongoURI = process.env.MONGO_URI || "mongodb://localhost:27017/fruits";
 
 mongoose
   .connect(mongoURI)
-  .then(() => console.log("Connected to MongoDB"))
+  .then(async () => {
+    console.log("Connected to MongoDB");
+    await seedFruitDB();
+  })
   .catch((err) => console.error("Could not connect to MongoDB:", err));
 
 const app = express();
@@ -27,7 +31,8 @@ app.get("/fruits", async (req, res) => {
       name: 1,
       color: 1,
       origin: 1,
-      sweet: 1
+      sweet: 1,
+      img: 1,
     });
     res.send(fruits);
   } catch (error) {
@@ -47,7 +52,7 @@ app.post("/fruits", async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 8001;
+const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
